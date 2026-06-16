@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Shazam for Short-Form Video</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0a0a0f; color: #fff; min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 1rem; }
+  .container { width: 100%; max-width: 480px; }
+  .header { text-align: center; margin-bottom: 2.5rem; }
+  .logo { width: 64px; height: 64px; background: #1D78FF; border-radius: 18px; display: flex; align-items: center; justify-content: center; margin: 0 auto 1rem; }
+  .logo svg { width: 36px; height: 36px; }
+  h1 { font-size: 22px; font-weight: 600; color: #fff; margin-bottom: 4px; }
+  .subtitle { font-size: 14px; color: #888; }
+  .badge { display: inline-block; font-size: 11px; background: #1a1a2e; color: #1D78FF; border: 1px solid #1D78FF33; border-radius: 20px; padding: 3px 10px; margin-top: 8px; }
+  .card { background: #13131a; border: 1px solid #222; border-radius: 16px; padding: 1.5rem; margin-bottom: 1rem; }
+  .input-row { display: flex; gap: 8px; }
+  .url-input { flex: 1; background: #0a0a0f; border: 1px solid #333; border-radius: 10px; padding: 12px 14px; color: #fff; font-size: 14px; outline: none; transition: border 0.2s; }
+  .url-input:focus { border-color: #1D78FF; }
+  .url-input::placeholder { color: #555; }
+  .identify-btn { background: #1D78FF; color: #fff; border: none; border-radius: 10px; padding: 12px 20px; font-size: 14px; font-weight: 600; cursor: pointer; white-space: nowrap; transition: background 0.2s, transform 0.1s; }
+  .identify-btn:hover { background: #1565d8; }
+  .identify-btn:active { transform: scale(0.97); }
+  .identify-btn:disabled { background: #333; color: #666; cursor: not-allowed; transform: none; }
+  .status-row { display: flex; align-items: center; gap: 10px; margin-top: 1rem; min-height: 24px; }
+  .spinner { width: 16px; height: 16px; border: 2px solid #333; border-top-color: #1D78FF; border-radius: 50%; animation: spin 0.8s linear infinite; flex-shrink: 0; display: none; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .status-text { font-size: 13px; color: #888; }
+  .result-card { background: #13131a; border: 1px solid #1D78FF44; border-radius: 16px; padding: 1.5rem; margin-bottom: 1rem; display: none; }
+  .result-inner { display: flex; align-items: center; gap: 14px; margin-bottom: 1rem; }
+  .result-icon { width: 56px; height: 56px; background: #1a1a2e; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 28px; flex-shrink: 0; }
+  .result-song { font-size: 18px; font-weight: 600; color: #fff; line-height: 1.3; }
+  .result-artist { font-size: 14px; color: #888; margin-top: 3px; }
+  .result-meta { font-size: 12px; color: #555; margin-top: 12px; padding-top: 12px; border-top: 1px solid #222; line-height: 1.8; }
+  .result-meta span { color: #777; }
+  .actions { display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap; }
+  .action-btn { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; padding: 8px 14px; border-radius: 8px; border: 1px solid #333; color: #ccc; text-decoration: none; background: #0a0a0f; transition: border-color 0.2s, color 0.2s; }
+  .action-btn:hover { border-color: #1D78FF; color: #1D78FF; }
+  .error-card { background: #1a0a0a; border: 1px solid #ff4444; border-radius: 16px; padding: 1rem 1.25rem; margin-bottom: 1rem; display: none; font-size: 14px; color: #ff8888; line-height: 1.5; }
+  .no-match-card { background: #13131a; border: 1px solid #333; border-radius: 16px; padding: 1rem 1.25rem; margin-bottom: 1rem; display: none; font-size: 14px; color: #888; text-align: center; line-height: 1.6; }
+  .hint { text-align: center; font-size: 12px; color: #444; line-height: 1.7; margin-top: 0.5rem; }
+  .hint a { color: #666; }
+  .score-row { display: flex; align-items: center; gap: 8px; margin-top: 10px; }
+  .score-label { font-size: 12px; color: #555; white-space: nowrap; }
+  .score-track { flex: 1; height: 3px; background: #222; border-radius: 2px; overflow: hidden; }
+  .score-fill { height: 100%; background: #1D78FF; border-radius: 2px; transition: width 0.6s ease; }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <div class="logo">
+      <svg viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="18" cy="18" r="3" fill="white"/>
+        <path d="M18 10C18 10 11 14 11 18C11 21.3 14.1 24 18 24C21.9 24 25 21.3 25 18C25 14.7 21.9 12 18 12" stroke="white" stroke-width="2.5" stroke-linecap="round"/>
+        <path d="M18 6C18 6 7 11 7 18C7 23.5 11.9 28 18 28C24.1 28 29 23.5 29 18C29 12.5 24.1 8 18 8" stroke="white" stroke-width="2" stroke-linecap="round" stroke-opacity="0.5"/>
+      </svg>
+    </div>
+    <h1>Shazam for Short-Form Video</h1>
+    <p class="subtitle">Paste a TikTok URL to identify the song</p>
+    <span class="badge">Concept demo — TikTok only</span>
+  </div>
+
+  <div class="card">
+    <div class="input-row">
+      <input class="url-input" id="url-input" type="url" placeholder="https://www.tiktok.com/@user/video/..." autocomplete="off" />
+      <button class="identify-btn" id="identify-btn" onclick="identify()">Identify</button>
+    </div>
+    <div class="status-row">
+      <div class="spinner" id="spinner"></div>
+      <span class="status-text" id="status-text"></span>
+    </div>
+  </div>
+
+  <div class="result-card" id="result-card">
+    <div class="result-inner">
+      <div class="result-icon">🎵</div>
+      <div>
+        <div class="result-song" id="result-song"></div>
+        <div class="result-artist" id="result-artist"></div>
+      </div>
+    </div>
+    <div class="score-row">
+      <span class="score-label">Match confidence</span>
+      <div class="score-track"><div class="score-fill" id="score-fill" style="width:0%"></div></div>
+      <span class="score-label" id="score-pct"></span>
+    </div>
+    <div class="result-meta" id="result-meta"></div>
+    <div class="actions" id="result-actions"></div>
+  </div>
+
+  <div class="no-match-card" id="no-match-card">
+    <div style="font-size:24px;margin-bottom:8px;">🎵</div>
+    <div id="no-match-text"></div>
+  </div>
+
+  <div class="error-card" id="error-card"></div>
+
+  <p class="hint">Works with public TikTok videos where music is clearly audible.<br>Instagram support requires a native platform integration — <a href="#">that's what this demo proposes.</a></p>
+</div>
+
+<script>
+let busy = false;
+
+async function identify() {
+  if (busy) return;
+
+  const url = document.getElementById('url-input').value.trim();
+  const btn = document.getElementById('identify-btn');
+  const spinner = document.getElementById('spinner');
+  const statusText = document.getElementById('status-text');
+
+  hideAll();
+
+  if (!url) {
+    showError('Please paste a TikTok URL.');
+    return;
+  }
+
+  busy = true;
+  btn.disabled = true;
+  spinner.style.display = 'block';
+
+  try {
+    statusText.textContent = 'Extracting audio...';
+
+    const response = await fetch('/identify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url })
+    });
+
+    statusText.textContent = 'Identifying song...';
+
+    let data;
+    try {
+      data = await response.json();
+    } catch(e) {
+      console.error('Failed to parse response JSON:', e);
+      showError('Unexpected response from server. Please try again.');
+      return;
+    }
+
+    if (!response.ok) {
+      showError(data.error || 'Something went wrong. Please try again.');
+      return;
+    }
+
+    if (!data.identified) {
+      showNoMatch(data.message || "Couldn't identify the song.");
+      return;
+    }
+
+    showResult(data);
+
+  } catch(err) {
+    console.error('Fetch error:', err);
+    showError('Could not reach the server. Please try again.');
+  } finally {
+    busy = false;
+    btn.disabled = false;
+    spinner.style.display = 'none';
+    statusText.textContent = '';
+  }
+}
+
+function showResult(data) {
+  document.getElementById('result-song').textContent = data.song || 'Unknown';
+  document.getElementById('result-artist').textContent = data.artist || '';
+
+  const score = Math.min(100, Math.max(0, Math.round(data.score || 0)));
+  document.getElementById('score-fill').style.width = score + '%';
+  document.getElementById('score-pct').textContent = score ? score + '%' : '';
+
+  const meta = [];
+  if (data.album) meta.push('Album: ' + data.album);
+  if (data.year) meta.push('Year: ' + data.year);
+  if (data.genre) meta.push('Genre: ' + data.genre);
+  document.getElementById('result-meta').textContent = meta.join('  ·  ');
+
+  const q = encodeURIComponent((data.song || '') + ' ' + (data.artist || ''));
+  document.getElementById('result-actions').innerHTML = `
+    <a class="action-btn" href="https://open.spotify.com/search/${q}" target="_blank">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/></svg>
+      Spotify
+    </a>
+    <a class="action-btn" href="https://music.apple.com/search?term=${q}" target="_blank">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M23.994 6.124a9.23 9.23 0 00-.24-2.19c-.317-1.31-1.062-2.31-2.18-3.043a5.022 5.022 0 00-1.877-.726 10.496 10.496 0 00-1.564-.15c-.04-.003-.083-.01-.124-.013H5.986c-.152.01-.303.017-.455.026C4.786.07 4.043.15 3.34.428 2.004.958 1.04 1.88.475 3.208c-.192.448-.292.925-.363 1.408-.056.392-.088.785-.1 1.18 0 .032-.007.062-.01.093v12.223c.01.14.017.283.027.424.05.815.154 1.624.497 2.373.65 1.42 1.738 2.353 3.234 2.801.42.127.848.196 1.287.229.35.026.7.051 1.051.051h12.255c.437 0 .876-.016 1.312-.056.51-.046 1.015-.138 1.498-.334 1.507-.606 2.482-1.667 2.948-3.221.155-.524.22-1.063.245-1.604.013-.29.02-.58.02-.87V6.124zm-6.84 9.132a4.305 4.305 0 01-.97 1.518 4.55 4.55 0 01-1.486 1.01 4.512 4.512 0 01-1.832.363 4.528 4.528 0 01-1.832-.363 4.568 4.568 0 01-1.486-1.01 4.36 4.36 0 01-.971-1.518 4.972 4.972 0 01-.35-1.868c0-.657.117-1.276.35-1.862a4.327 4.327 0 01.971-1.517 4.57 4.57 0 011.486-1.01 4.528 4.528 0 011.832-.364c.661 0 1.274.122 1.832.363a4.55 4.55 0 011.486 1.01 4.297 4.297 0 01.97 1.518c.234.586.35 1.206.35 1.862a4.99 4.99 0 01-.35 1.868zm0-9.775V9.4l-5.498 1.687V6.005l5.498-1.524z"/></svg>
+      Apple Music
+    </a>
+    <a class="action-btn" href="https://www.youtube.com/results?search_query=${q}" target="_blank">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M23.495 6.205a3.007 3.007 0 00-2.088-2.088c-1.87-.501-9.396-.501-9.396-.501s-7.507-.01-9.396.501A3.007 3.007 0 00.527 6.205a31.247 31.247 0 00-.522 5.805 31.247 31.247 0 00.522 5.783 3.007 3.007 0 002.088 2.088c1.868.502 9.396.502 9.396.502s7.506 0 9.396-.502a3.007 3.007 0 002.088-2.088 31.247 31.247 0 00.5-5.783 31.247 31.247 0 00-.5-5.805zM9.609 15.601V8.408l6.264 3.602z"/></svg>
+      YouTube
+    </a>
+  `;
+
+  document.getElementById('result-card').style.display = 'block';
+}
+
+function showNoMatch(msg) {
+  document.getElementById('no-match-text').textContent = msg;
+  document.getElementById('no-match-card').style.display = 'block';
+}
+
+function showError(msg) {
+  document.getElementById('error-card').textContent = msg;
+  document.getElementById('error-card').style.display = 'block';
+}
+
+function hideAll() {
+  document.getElementById('result-card').style.display = 'none';
+  document.getElementById('no-match-card').style.display = 'none';
+  document.getElementById('error-card').style.display = 'none';
+}
+
+document.getElementById('url-input').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') identify();
+});
+</script>
+</body>
+</html>
